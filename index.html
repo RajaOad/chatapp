@@ -18,18 +18,23 @@
     <div id="main-container" class="max-w-lg w-full glass rounded-3xl p-8 shadow-2xl transition-all duration-500">
         <header class="mb-6 text-center">
             <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3</h1>
-            <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold">Initializing Keys...</div>
+            <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold">Initializing...</div>
         </header>
 
         <div id="step-1" class="space-y-4">
             <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
                 <p class="text-[11px] text-blue-400 leading-relaxed">
+
                     <strong>Privacy Protocol:</strong>VPN is recommended to mask Public IP. Both users must verify the <b>Shared ID</b> matches before chatting.
+
                 </p>
             </div>
             
-            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Clean Token</button>
-            <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
+            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Token</button>
+            <div class="relative">
+                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
+                <button id="copy-btn" class="absolute bottom-2 right-2 bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[9px] text-white hidden">Copy</button>
+            </div>
             <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-white">2. Finalize Connection</button>
         </div>
 
@@ -61,6 +66,7 @@
         let dataChannel;
         let localKeyPair;
         let sharedSecretKey;
+        let isTokenGenerated = false;
 
         // --- 1. CRYPTO ENGINE ---
         async function initCrypto() {
@@ -98,26 +104,34 @@
             await createSharedFingerprint(remotePublicKeyBuffer);
         }
 
-        // --- 2. HANDSHAKE WITH IP SCRUBBER ---
+        // --- 2. HANDSHAKE WITH ROBUST ICE HANDLING ---
+        const finalizeSDP = async () => {
+            if (isTokenGenerated) return;
+            isTokenGenerated = true;
+
+            let sdp = pc.localDescription.sdp;
+            // Scrub Local IPs for privacy
+            const localIPRegex = /a=candidate:.*?\s(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|fe80:).*?\s/g;
+            sdp = sdp.replace(localIPRegex, "");
+            
+            const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
+            const payload = { sdp: { type: pc.localDescription.type, sdp: sdp }, key: Array.from(new Uint8Array(pubKey)) };
+            
+            document.getElementById('sdp-io').value = btoa(JSON.stringify(payload));
+            document.getElementById('create-btn').innerText = "Token Ready ↓";
+            document.getElementById('copy-btn').classList.remove('hidden');
+        };
+
         document.getElementById('create-btn').onclick = async () => {
+            document.getElementById('create-btn').innerText = "Gathering Route...";
             dataChannel = pc.createDataChannel("secure-chat");
             setupDC();
+            
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
-            pc.onicecandidate = async (e) => {
-                if (!e.candidate) {
-                    let sdp = pc.localDescription.sdp;
-                    // Scrub Local IPs (192.168, 10., 172.16, etc)
-                    const localIPRegex = /a=candidate:.*?\s(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|fe80:).*?\s/g;
-                    sdp = sdp.replace(localIPRegex, "");
-                    
-                    const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
-                    const payload = { sdp: { type: pc.localDescription.type, sdp: sdp }, key: Array.from(new Uint8Array(pubKey)) };
-                    document.getElementById('sdp-io').value = btoa(JSON.stringify(payload));
-                    document.getElementById('create-btn').innerText = "Clean Token Ready ↓";
-                }
-            };
+            pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
+            setTimeout(finalizeSDP, 3000); // Fail-safe for slow STUN
         };
 
         document.getElementById('connect-btn').onclick = async () => {
@@ -130,15 +144,10 @@
                 if (raw.sdp.type === "offer") {
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
-                    pc.onicecandidate = async (e) => {
-                        if (!e.candidate) {
-                            const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
-                            const payload = { sdp: pc.localDescription, key: Array.from(new Uint8Array(pubKey)) };
-                            document.getElementById('sdp-io').value = btoa(JSON.stringify(payload));
-                        }
-                    };
+                    pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
+                    setTimeout(finalizeSDP, 3000);
                 }
-            } catch (e) { alert("Invalid Token!"); }
+            } catch (e) { alert("Invalid Token!"); console.error(e); }
         };
 
         pc.ondatachannel = (e) => { dataChannel = e.channel; setupDC(); };
@@ -169,24 +178,27 @@
             input.value = '';
         };
 
+        document.getElementById('copy-btn').onclick = () => {
+            const el = document.getElementById('sdp-io');
+            el.select();
+            document.execCommand('copy');
+            document.getElementById('copy-btn').innerText = "Copied!";
+            setTimeout(() => document.getElementById('copy-btn').innerText = "Copy", 2000);
+        };
+
         function renderMsg(msg, sender) {
             const div = document.createElement('div');
             div.className = `flex ${sender === 'me' ? 'justify-end' : 'justify-start'}`;
-            div.innerHTML = `<div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none' : 'bg-slate-800 rounded-tl-none border border-slate-700'}">${msg}</div>`;
+            div.innerHTML = `<div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none text-white' : 'bg-slate-800 rounded-tl-none border border-slate-700 text-slate-200'}">${msg}</div>`;
             const box = document.getElementById('messages');
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         }
 
-        // --- 4. THE NUCLEAR OPTION ---
         document.getElementById('burn-btn').onclick = () => {
             if(confirm("DANGER: Wiping RAM keys and chat history. This is permanent.")) {
                 document.getElementById('body-main').classList.add('burn-effect');
-                setTimeout(() => {
-                    sharedSecretKey = null;
-                    localKeyPair = null;
-                    location.reload();
-                }, 800);
+                setTimeout(() => { location.reload(); }, 800);
             }
         };
 
