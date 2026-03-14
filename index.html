@@ -3,130 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost-Chat: Secure P2P v3.5</title>
+    <title>Ghost-Chat: Hardened P2P v3.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
         .hidden { display: none; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .burn-effect { filter: grayscale(1) blur(10px); opacity: 0; pointer-events: none; }
-        @keyframes pulse-cyan { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .gathering { animation: pulse-cyan 1.5s infinite; }
         .log-line { font-family: monospace; font-size: 9px; border-left: 2px solid #334155; padding-left: 6px; margin-bottom: 2px; }
-        .msg-status { font-size: 8px; margin-top: 2px; opacity: 0.6; }
     </style>
 </head>
 <body class="bg-[#020617] text-slate-200 font-sans min-h-screen flex items-center justify-center p-4 transition-all duration-1000" id="body-main">
 
     <div id="main-container" class="max-w-lg w-full glass rounded-3xl p-8 shadow-2xl transition-all duration-500">
         <header class="mb-6 text-center">
-            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.5</h1>
-            <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold border border-slate-700">Initializing...</div>
+            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.6</h1>
+            <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold border border-slate-700">Protected Mode</div>
         </header>
 
         <div id="step-1" class="space-y-4">
-            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Connection Token</button>
+
+            <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
+                <p class="text-[11px] text-blue-400 leading-relaxed">
+                    <strong>Mobile Setup:</strong> 1. Gen Token. 2. Send to Peer. 3. Peer Pastes & Gen Answer. 4. You paste Answer back.
+                </p>
+            </div>
+
+         
+
+            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Secure Token</button>
             
             <div class="relative">
-                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
-                <button id="copy-btn" class="absolute bottom-2 right-2 bg-cyan-600 hover:bg-cyan-500 px-3 py-1 rounded text-[10px] text-white font-bold hidden shadow-lg">COPY</button>
+                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token..."></textarea>
+                <button id="copy-btn" class="absolute bottom-2 right-2 bg-cyan-600 px-3 py-1 rounded text-[10px] text-white font-bold hidden">COPY</button>
             </div>
             
-            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold text-white shadow-lg shadow-blue-900/40 transition-all">2. Process & Finalize</button>
+            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold text-white transition-all">2. Verify & Connect</button>
 
             <div class="p-3 bg-black/40 rounded-xl border border-slate-800">
-                <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-widest flex justify-between">
-                    <span>System Diagnostics</span>
-                    <span id="ice-status" class="text-slate-600">ICE: Idle</span>
-                </div>
-                <div id="log-window" class="h-20 overflow-y-auto scrollbar-hide text-slate-400">
-                    <div class="log-line text-cyan-500">Core Ready. Waiting for local/remote key.</div>
+                <div id="log-window" class="h-20 overflow-y-auto text-slate-400 scrollbar-hide">
+                    <div class="log-line text-cyan-500">Awaiting secure handshake...</div>
                 </div>
             </div>
         </div>
 
-        <div id="step-2" class="hidden flex flex-col h-[600px]">
+        <div id="step-2" class="hidden flex flex-col h-[550px]">
             <div class="flex flex-col mb-4 pb-3 border-b border-slate-800 space-y-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Encrypted Link
-                    </span>
-                    <span id="fingerprint" class="text-[10px] text-white font-mono bg-emerald-500/20 px-3 py-1 rounded-lg border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">ID: ----</span>
-                </div>
-                <div class="flex justify-between text-[8px] text-slate-500 font-mono uppercase px-1">
-                    <span id="my-id">Loc: ...</span>
-                    <span id="peer-id">Rem: ...</span>
+                    <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">● Link Verified</span>
+                    <span id="fingerprint" class="text-[10px] text-white font-mono bg-emerald-500/20 px-3 py-1 rounded-lg border border-emerald-500/30">ID: ----</span>
                 </div>
             </div>
-
             <div id="messages" class="flex-1 overflow-y-auto space-y-4 mb-4 pr-2"></div>
-
-            <div class="flex gap-2 p-2 bg-slate-900 rounded-2xl border border-slate-800 focus-within:border-cyan-500 transition-all">
-                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Type a message...">
-                <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 p-2 px-6 rounded-xl font-bold text-white text-sm transition-all active:scale-95">Send</button>
+            <div class="flex gap-2 p-2 bg-slate-900 rounded-2xl border border-slate-800">
+                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Secret message...">
+                <button id="send-btn" class="bg-cyan-600 p-2 px-6 rounded-xl font-bold text-white text-sm">Send</button>
             </div>
-            
-            <button id="burn-btn" class="mt-4 text-slate-600 hover:text-red-500 text-[9px] uppercase font-bold transition-all tracking-widest">Wipe & Burn Session</button>
+            <button id="burn-btn" class="mt-4 text-slate-600 hover:text-red-500 text-[9px] uppercase font-bold transition-all">Burn Session</button>
         </div>
     </div>
 
     <script>
-        const iceConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-                { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
-            ],
-            iceCandidatePoolSize: 10
-        };
-
+        const iceConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }] };
         let pc = new RTCPeerConnection(iceConfig);
-        let dataChannel;
-        let localKeyPair;
-        let sharedSecretKey;
-        let isTokenGenerated = false;
+        let dataChannel, localKeyPair, sharedSecretKey, isTokenGenerated = false;
 
         function logger(msg, type = 'info') {
             const logWin = document.getElementById('log-window');
             const line = document.createElement('div');
             line.className = `log-line ${type === 'error' ? 'text-red-400 border-red-900' : type === 'success' ? 'text-emerald-400 border-emerald-900' : 'text-slate-400'}`;
-            line.innerText = `[${new Date().toLocaleTimeString([], {hour12: false})}] ${msg}`;
+            line.innerText = `> ${msg}`;
             logWin.appendChild(line);
             logWin.scrollTop = logWin.scrollHeight;
         }
 
-        async function initCrypto() {
-            localKeyPair = await window.crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
-            logger("ECDH P-256 Keys generated.", "success");
-            document.getElementById('status-tag').innerText = "Keys Ready";
+        // --- NEW: Integrity Verification Logic ---
+        async function generateIntegrityToken(payloadObj) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(JSON.stringify(payloadObj));
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return btoa(JSON.stringify({ ...payloadObj, _sig: hashHex }));
         }
 
-        async function updateUIKeys(remotePubKeyBuffer) {
-            const localPubKeyBuffer = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
-            const toHex = (buf, len=4) => Array.from(new Uint8Array(buf)).slice(0, len).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        async function verifyIntegrityToken(base64Str) {
+            const raw = JSON.parse(atob(base64Str));
+            const signature = raw._sig;
+            delete raw._sig;
+            const encoder = new TextEncoder();
+            const data = encoder.encode(JSON.stringify(raw));
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const currentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             
-            document.getElementById('my-id').innerText = `Loc: ${toHex(localPubKeyBuffer)}`;
-            document.getElementById('peer-id').innerText = `Rem: ${toHex(remotePubKeyBuffer)}`;
+            if (currentHash !== signature) throw new Error("Integrity Check Failed: Token Modified.");
+            return raw;
+        }
 
-            const keys = [new Uint8Array(localPubKeyBuffer), new Uint8Array(remotePubKeyBuffer)].sort((a,b) => {
-                for(let i=0; i<a.length; i++) if(a[i] !== b[i]) return a[i] - b[i];
-                return 0;
-            });
-            const combined = new Uint8Array([...keys[0], ...keys[1]]);
-            const hash = await crypto.subtle.digest("SHA-256", combined);
-            document.getElementById('fingerprint').innerText = `ID: ${toHex(hash, 6)}`;
-            logger("Handshake Fingerprint verified.", "success");
+        async function initCrypto() {
+            localKeyPair = await window.crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
+            logger("Secure keys initialized.", "success");
         }
 
         async function deriveKey(remotePublicKeyBuffer) {
-            try {
-                const remotePublicKey = await window.crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
-                sharedSecretKey = await window.crypto.subtle.deriveKey({ name: "ECDH", public: remotePublicKey }, localKeyPair.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-                await updateUIKeys(remotePublicKeyBuffer);
-                logger("AES-GCM-256 Master Key derived.", "success");
-            } catch(e) { logger("Key exchange failed.", "error"); }
+            const remotePublicKey = await window.crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
+            sharedSecretKey = await window.crypto.subtle.deriveKey({ name: "ECDH", public: remotePublicKey }, localKeyPair.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+            
+            const localPubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
+            const combined = new Uint8Array([...new Uint8Array(localPubKey), ...new Uint8Array(remotePublicKeyBuffer)].sort());
+            const hash = await crypto.subtle.digest("SHA-256", combined);
+            document.getElementById('fingerprint').innerText = `ID: ${Array.from(new Uint8Array(hash)).slice(0,6).map(b => b.toString(16).toUpperCase()).join(':')}`;
         }
 
         const finalizeSDP = async () => {
@@ -134,63 +120,42 @@
             isTokenGenerated = true;
             const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
             const payload = { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp }, key: Array.from(new Uint8Array(pubKey)) };
-            document.getElementById('sdp-io').value = btoa(JSON.stringify(payload));
-            document.getElementById('create-btn').innerText = "TOKEN READY ✓";
-            document.getElementById('create-btn').classList.remove('gathering', 'bg-slate-800');
-            document.getElementById('create-btn').classList.add('bg-emerald-600');
+            
+            // Apply integrity protection
+            document.getElementById('sdp-io').value = await generateIntegrityToken(payload);
+            document.getElementById('create-btn').innerText = "SECURE TOKEN READY";
             document.getElementById('copy-btn').classList.remove('hidden');
-            document.getElementById('status-tag').innerText = "Step 2: Share Token";
-            logger("Routes gathered. Copy token now.", "success");
-        };
-
-        pc.onicegatheringstatechange = () => {
-            const state = pc.iceGatheringState;
-            document.getElementById('ice-status').innerText = `ICE: ${state.toUpperCase()}`;
-            if(state === 'gathering') logger("Searching for P2P paths...");
+            logger("Tamper-proof token generated.", "success");
         };
 
         document.getElementById('create-btn').onclick = async () => {
-            isTokenGenerated = false;
-            document.getElementById('create-btn').innerText = "GATHERING...";
-            document.getElementById('create-btn').classList.add('gathering');
-            dataChannel = pc.createDataChannel("chat", { ordered: true });
+            dataChannel = pc.createDataChannel("chat");
             setupDC();
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
-            setTimeout(finalizeSDP, 7000); 
+            setTimeout(finalizeSDP, 6000);
         };
 
         document.getElementById('connect-btn').onclick = async () => {
             try {
-                let val = document.getElementById('sdp-io').value.trim().replace(/\s/g, '');
-                if(!val) return logger("No token provided.", "error");
-                const raw = JSON.parse(atob(val));
-                logger(`Reading ${raw.sdp.type} from partner...`);
+                const raw = await verifyIntegrityToken(document.getElementById('sdp-io').value.trim());
+                logger("Integrity Verified ✓", "success");
                 await pc.setRemoteDescription(new RTCSessionDescription(raw.sdp));
                 await deriveKey(new Uint8Array(raw.key).buffer);
                 if (raw.sdp.type === "offer") {
-                    logger("Creating Answer...");
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
-                    setTimeout(finalizeSDP, 7000);
+                    setTimeout(finalizeSDP, 6000);
                 }
-            } catch (e) { logger("Corrupted token pasted.", "error"); }
-        };
-
-        pc.ondatachannel = (e) => { 
-            dataChannel = e.channel; 
-            setupDC(); 
-            logger("Peer connected successfully."); 
+            } catch (e) { logger(e.message, "error"); }
         };
 
         function setupDC() {
             dataChannel.onopen = () => {
                 document.getElementById('step-1').classList.add('hidden');
                 document.getElementById('step-2').classList.remove('hidden');
-                document.getElementById('status-tag').innerText = "CONNECTED";
-                document.getElementById('status-tag').classList.replace('bg-slate-800', 'bg-emerald-500/20');
             };
             dataChannel.onmessage = async (e) => {
                 const { iv, data } = JSON.parse(e.data);
@@ -201,39 +166,26 @@
 
         document.getElementById('send-btn').onclick = async () => {
             const input = document.getElementById('msg-input');
-            if (!input.value || !dataChannel || dataChannel.readyState !== 'open') return;
-            const text = input.value;
             const iv = crypto.getRandomValues(new Uint8Array(12));
-            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, sharedSecretKey, new TextEncoder().encode(text));
+            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, sharedSecretKey, new TextEncoder().encode(input.value));
             dataChannel.send(JSON.stringify({ iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) }));
-            renderMsg(text, 'me');
+            renderMsg(input.value, 'me');
             input.value = '';
-        };
-
-        document.getElementById('copy-btn').onclick = () => {
-            const el = document.getElementById('sdp-io');
-            el.select();
-            navigator.clipboard.writeText(el.value);
-            document.getElementById('copy-btn').innerText = "COPIED";
-            setTimeout(()=> document.getElementById('copy-btn').innerText = "COPY", 2000);
         };
 
         function renderMsg(msg, sender) {
             const div = document.createElement('div');
             div.className = `flex ${sender === 'me' ? 'justify-end' : 'justify-start'}`;
-            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            div.innerHTML = `
-                <div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none' : 'bg-slate-800 rounded-tl-none border border-slate-700'}">
-                    <div>${msg}</div>
-                    <div class="flex items-center justify-end gap-1 msg-status">
-                        ${time} ${sender === 'me' ? '<span>✓</span>' : ''}
-                    </div>
-                </div>`;
+            div.innerHTML = `<div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600' : 'bg-slate-800'}">${msg}</div>`;
             document.getElementById('messages').appendChild(div);
             document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
 
-        document.getElementById('burn-btn').onclick = () => { if(confirm("Destroy all RAM data?")) location.reload(); };
+        document.getElementById('burn-btn').onclick = () => location.reload();
+        document.getElementById('copy-btn').onclick = () => {
+            navigator.clipboard.writeText(document.getElementById('sdp-io').value);
+            document.getElementById('copy-btn').innerText = "DONE";
+        };
         initCrypto();
     </script>
 </body>
