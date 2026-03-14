@@ -11,7 +11,7 @@
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
   .burn-effect { filter: grayscale(1) blur(10px); opacity: 0; pointer-events: none; }
-  #sdp-io { word-break: break-all; white-space: pre; }
+  #sdp-io { white-space: nowrap; overflow-x: auto; word-break: normal; }
 </style>
 </head>
 <body class="bg-[#020617] text-slate-200 font-sans min-h-screen flex items-center justify-center p-4 transition-all duration-1000" id="body-main">
@@ -31,7 +31,7 @@
     
     <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Token</button>
     <div class="relative">
-        <textarea id="sdp-io" wrap="off" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
+        <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
         <button id="copy-btn" class="absolute bottom-2 right-2 bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[9px] text-white hidden">Copy</button>
     </div>
     <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-white">2. Finalize Connection</button>
@@ -67,12 +67,22 @@ let localKeyPair;
 let sharedSecretKey;
 let isTokenGenerated = false;
 
-// --- Safe Base64 Encode / Decode for Mobile ---
+// --- Binary-safe Base64 Encode / Decode ---
 function encodeToken(obj){
-    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    const str = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary);
 }
+
 function decodeToken(str){
-    return JSON.parse(decodeURIComponent(escape(atob(str.replace(/\s+/g, '')))));
+    str = str.replace(/\s+/g,''); // remove spaces/line breaks
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+    const decoded = new TextDecoder().decode(bytes);
+    return JSON.parse(decoded);
 }
 
 // --- 1. CRYPTO ENGINE ---
@@ -104,8 +114,8 @@ async function createSharedFingerprint(remotePubKeyBuffer) {
 }
 
 async function deriveKey(remotePublicKeyBuffer){
-    const remotePublicKey = await window.crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
-    sharedSecretKey = await window.crypto.subtle.deriveKey(
+    const remotePublicKey = await crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
+    sharedSecretKey = await crypto.subtle.deriveKey(
         { name:"ECDH", public: remotePublicKey },
         localKeyPair.privateKey,
         { name:"AES-GCM", length:256 },
