@@ -2,55 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ghost-Chat: Secure P2P</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
         .hidden { display: none; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .burn-effect { filter: grayscale(1) blur(10px); opacity: 0; pointer-events: none; }
-        input, textarea { font-size: 16px; touch-action: manipulation; }
-        .btn-active:active { transform: scale(0.95); }
-        .shake { animation: shake 0.5s; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     </style>
 </head>
 <body class="bg-[#020617] text-slate-200 font-sans min-h-screen flex items-center justify-center p-4 transition-all duration-1000" id="body-main">
 
-    <div id="main-container" class="max-w-lg w-full glass rounded-3xl p-6 shadow-2xl transition-all duration-500">
-        <header class="mb-4 text-center">
-            <h1 class="text-2xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3</h1>
+    <div id="main-container" class="max-w-lg w-full glass rounded-3xl p-8 shadow-2xl transition-all duration-500">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.1</h1>
             <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold">Initializing...</div>
-            <div id="ice-status" class="text-[9px] mt-1 text-amber-400 hidden">Gathering ICE candidates...</div>
         </header>
 
         <div id="step-1" class="space-y-4">
-            <div class="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
                 <p class="text-[11px] text-blue-400 leading-relaxed">
-                    <strong>Privacy Protocol:</strong> VPN recommended. Verify <b>Shared ID</b> matches. <br>
-                    <span class="text-amber-400">⚠️ Mobile: Long-press → Select All → Copy</span>
+                    <strong>P2P Protocol:</strong> Now includes TURN relaying for mobile/cellular networks. Verify the <b>Shared ID</b> before sending secrets.
                 </p>
             </div>
             
-            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white btn-active">1. Generate Token</button>
-            
+            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Token</button>
             <div class="relative">
-                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[11px] h-40 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here... (Auto-trims spaces)" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-                <button id="copy-btn" class="absolute bottom-2 right-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-[10px] text-white hidden btn-active">Copy</button>
-                <button id="clear-btn" class="absolute bottom-2 left-2 bg-red-900/50 hover:bg-red-800 px-3 py-1.5 rounded text-[10px] text-red-300 hidden btn-active">Clear</button>
+                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
+                <button id="copy-btn" class="absolute bottom-2 right-2 bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[9px] text-white hidden">Copy</button>
             </div>
-            
-            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-white btn-active disabled:opacity-50 disabled:cursor-not-allowed">2. Finalize Connection</button>
-            
-            <div id="error-log" class="hidden p-3 bg-red-950/30 border border-red-900/50 rounded-xl">
-                <p class="text-[10px] text-red-400 font-mono break-all" id="error-text"></p>
-            </div>
+            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-white">2. Finalize Connection</button>
         </div>
 
         <div id="step-2" class="hidden flex flex-col h-[550px]">
-            <button id="burn-btn" class="w-full mb-4 bg-red-950/20 hover:bg-red-600 border border-red-900/50 text-red-500 hover:text-white text-[10px] py-2 rounded-xl font-bold transition-all uppercase tracking-[0.2em] btn-active">Burn Session (Wipe RAM)</button>
+            <button id="burn-btn" class="w-full mb-4 bg-red-950/20 hover:bg-red-600 border border-red-900/50 text-red-500 hover:text-white text-[10px] py-2 rounded-xl font-bold transition-all uppercase tracking-[0.2em]">Burn Session (Wipe RAM)</button>
 
             <div class="flex flex-col mb-4 pb-3 border-b border-slate-800 space-y-2">
                 <div class="flex justify-between items-center">
@@ -66,32 +53,45 @@
             <div id="messages" class="flex-1 overflow-y-auto space-y-4 mb-4 pr-2"></div>
 
             <div class="flex gap-2 p-2 bg-slate-900 rounded-2xl border border-slate-800 focus-within:border-cyan-500 transition-colors">
-                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Type encrypted message..." autocomplete="off" autocorrect="off" autocapitalize="off">
-                <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 p-2 px-6 rounded-xl font-bold text-white transition-colors text-sm btn-active">Send</button>
+                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Type encrypted message...">
+                <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 p-2 px-6 rounded-xl font-bold text-white transition-colors text-sm">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        let pc = null;
+        // Updated ICE Configuration with TURN Support
+        const iceConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                // OpenRelay Free TURN servers
+                {
+                    urls: "turn:openrelay.metered.ca:80",
+                    username: "openrelayproject",
+                    credential: "openrelayproject"
+                },
+                {
+                    urls: "turn:openrelay.metered.ca:443",
+                    username: "openrelayproject",
+                    credential: "openrelayproject"
+                }
+            ],
+            iceCandidatePoolSize: 10
+        };
+
+        let pc = new RTCPeerConnection(iceConfig);
         let dataChannel;
         let localKeyPair;
         let sharedSecretKey;
         let isTokenGenerated = false;
-        let iceGatheringComplete = false;
 
-        // --- 1. CRYPTO ENGINE ---
         async function initCrypto() {
-            try {
-                localKeyPair = await window.crypto.subtle.generateKey(
-                    { name: "ECDH", namedCurve: "P-256" },
-                    false, ["deriveKey"]
-                );
-                updateStatus("Keys Ready", "ready");
-            } catch (e) {
-                updateStatus("Crypto API Error", "error");
-                showError("Web Crypto API not available - use HTTPS or modern browser");
-            }
+            localKeyPair = await window.crypto.subtle.generateKey(
+                { name: "ECDH", namedCurve: "P-256" },
+                false, ["deriveKey"]
+            );
+            document.getElementById('status-tag').innerText = "Keys Ready";
         }
 
         async function createSharedFingerprint(remotePubKeyBuffer) {
@@ -103,436 +103,118 @@
 
             const keys = [new Uint8Array(localPubKeyBuffer), new Uint8Array(remotePubKeyBuffer)];
             keys.sort((a, b) => {
-                for (let i = 0; i < Math.min(a.length, b.length); i++) {
-                    if (a[i] !== b[i]) return a[i] - b[i];
-                }
-                return a.length - b.length;
+                for (let i = 0; i < a.length; i++) { if (a[i] !== b[i]) return a[i] - b[i]; }
+                return 0;
             });
 
             const combined = new Uint8Array(keys[0].length + keys[1].length);
-            combined.set(keys[0], 0);
-            combined.set(keys[1], keys[0].length);
+            combined.set(keys[0], 0); combined.set(keys[1], keys[0].length);
             const hash = await crypto.subtle.digest("SHA-256", combined);
             document.getElementById('fingerprint').innerText = `SHARED ID: ${toHex(hash, 8)}`;
         }
 
         async function deriveKey(remotePublicKeyBuffer) {
-            try {
-                const remotePublicKey = await window.crypto.subtle.importKey(
-                    "raw", 
-                    remotePublicKeyBuffer, 
-                    { name: "ECDH", namedCurve: "P-256" }, 
-                    true, 
-                    []
-                );
-                sharedSecretKey = await window.crypto.subtle.deriveKey(
-                    { name: "ECDH", public: remotePublicKey }, 
-                    localKeyPair.privateKey, 
-                    { name: "AES-GCM", length: 256 }, 
-                    false, 
-                    ["encrypt", "decrypt"]
-                );
-                await createSharedFingerprint(remotePublicKeyBuffer);
-            } catch (e) {
-                showError("Key derivation failed: " + e.message);
-                throw e;
-            }
-        }
-
-        // --- 2. SAFE SDP HANDLING ---
-        function scrubSDPLocalIPs(sdp) {
-            const lines = sdp.split('\r\n');
-            const filtered = lines.filter(line => {
-                if (!line.startsWith('a=candidate:')) return true;
-                
-                const parts = line.split(' ');
-                if (parts.length < 6) return false;
-                
-                const ip = parts[4];
-                
-                const isLocal = ip.startsWith('192.168.') || 
-                               ip.startsWith('10.') || 
-                               (ip.startsWith('172.') && (
-                                   ip.startsWith('172.16.') || 
-                                   ip.startsWith('172.17.') ||
-                                   ip.startsWith('172.18.') ||
-                                   ip.startsWith('172.19.') ||
-                                   ip.startsWith('172.20.') ||
-                                   ip.startsWith('172.21.') ||
-                                   ip.startsWith('172.22.') ||
-                                   ip.startsWith('172.23.') ||
-                                   ip.startsWith('172.24.') ||
-                                   ip.startsWith('172.25.') ||
-                                   ip.startsWith('172.26.') ||
-                                   ip.startsWith('172.27.') ||
-                                   ip.startsWith('172.28.') ||
-                                   ip.startsWith('172.29.') ||
-                                   ip.startsWith('172.30.') ||
-                                   ip.startsWith('172.31.')
-                               )) ||
-                               ip.startsWith('169.254.') ||
-                               ip.startsWith('127.') ||
-                               ip === '0.0.0.0' ||
-                               ip === '::1' ||
-                               ip.startsWith('fe80:') ||
-                               ip.startsWith('fc00:') ||
-                               ip.startsWith('fd00:');
-                
-                return !isLocal;
-            });
-            
-            return filtered.join('\r\n');
-        }
-
-        function createPeerConnection() {
-            if (pc) {
-                try { pc.close(); } catch(e) {}
-            }
-            
-            pc = new RTCPeerConnection({ 
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-                iceCandidatePoolSize: 10
-            });
-            
-            pc.ondatachannel = (e) => { 
-                dataChannel = e.channel; 
-                setupDC(); 
-            };
-            
-            pc.onconnectionstatechange = () => {
-                console.log("Connection state:", pc.connectionState);
-                if (pc.connectionState === 'failed') {
-                    showError("Connection failed - check NAT/firewall or try again");
-                } else if (pc.connectionState === 'connected') {
-                    updateStatus("WebRTC Connected", "success");
-                }
-            };
-            
-            pc.oniceconnectionstatechange = () => {
-                console.log("ICE state:", pc.iceConnectionState);
-            };
+            const remotePublicKey = await window.crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
+            sharedSecretKey = await window.crypto.subtle.deriveKey({ name: "ECDH", public: remotePublicKey }, localKeyPair.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+            await createSharedFingerprint(remotePublicKeyBuffer);
         }
 
         const finalizeSDP = async () => {
             if (isTokenGenerated) return;
-            if (!iceGatheringComplete) return;
-
             isTokenGenerated = true;
-            document.getElementById('ice-status').classList.add('hidden');
 
-            let sdp = scrubSDPLocalIPs(pc.localDescription.sdp);
+            let sdp = pc.localDescription.sdp;
+            // Scrub Local IPs for privacy
+            const localIPRegex = /a=candidate:.*?\s(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|fe80:).*?\s/g;
+            sdp = sdp.replace(localIPRegex, "");
             
             const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
-            const payload = { 
-                sdp: { type: pc.localDescription.type, sdp: sdp }, 
-                key: Array.from(new Uint8Array(pubKey)),
-                ts: Date.now()
-            };
+            const payload = { sdp: { type: pc.localDescription.type, sdp: sdp }, key: Array.from(new Uint8Array(pubKey)) };
             
-            try {
-                const token = btoa(JSON.stringify(payload));
-                document.getElementById('sdp-io').value = token;
-                document.getElementById('create-btn').innerText = "Token Ready ↓";
-                document.getElementById('create-btn').disabled = true;
-                document.getElementById('copy-btn').classList.remove('hidden');
-                document.getElementById('clear-btn').classList.remove('hidden');
-                updateStatus("Token Generated", "ready");
-            } catch (e) {
-                showError("Token generation failed: " + e.message);
-            }
+            document.getElementById('sdp-io').value = btoa(JSON.stringify(payload));
+            document.getElementById('create-btn').innerText = "Token Ready ↓";
+            document.getElementById('copy-btn').classList.remove('hidden');
         };
 
         document.getElementById('create-btn').onclick = async () => {
-            if (!localKeyPair) {
-                showError("Crypto not initialized - wait a moment and retry");
-                return;
-            }
+            document.getElementById('create-btn').innerText = "Gathering Route...";
+            dataChannel = pc.createDataChannel("secure-chat", { ordered: true });
+            setupDC();
             
-            createPeerConnection();
-            document.getElementById('create-btn').innerText = "Gathering ICE...";
-            document.getElementById('ice-status').classList.remove('hidden');
-            updateStatus("Creating Offer...", "waiting");
-
-            try {
-                dataChannel = pc.createDataChannel("secure-chat", {
-                    ordered: true,
-                    maxRetransmits: 3
-                });
-                setupDC();
-                
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                
-                iceGatheringComplete = false;
-                
-                pc.onicecandidate = (e) => { 
-                    if (!e.candidate) {
-                        iceGatheringComplete = true;
-                        finalizeSDP(); 
-                    }
-                };
-                
-                pc.onicegatheringstatechange = () => {
-                    if (pc.iceGatheringState === 'complete') {
-                        iceGatheringComplete = true;
-                        finalizeSDP();
-                    }
-                };
-                
-                setTimeout(() => {
-                    if (!isTokenGenerated) {
-                        iceGatheringComplete = true;
-                        finalizeSDP();
-                    }
-                }, 6000);
-                
-            } catch (e) {
-                showError("Failed to create offer: " + e.message);
-            }
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
+            // Increased timeout for TURN gathering
+            setTimeout(finalizeSDP, 5000); 
         };
 
         document.getElementById('connect-btn').onclick = async () => {
-            const rawVal = document.getElementById('sdp-io').value;
-            const val = rawVal.replace(/[\s\u200B-\u200D\uFEFF]+/g, '');
-            
-            if (!val) {
-                showError("Paste a token first!");
-                return;
-            }
-            
-            document.getElementById('clear-btn').classList.remove('hidden');
-            
             try {
-                console.log("Raw input length:", rawVal.length);
-                console.log("Cleaned length:", val.length);
-                
-                let decoded;
-                try {
-                    decoded = atob(val);
-                } catch (e) {
-                    const padded = val + '='.repeat((4 - val.length % 4) % 4);
-                    try {
-                        decoded = atob(padded);
-                        console.log("Fixed padding issue");
-                    } catch (e2) {
-                        throw new Error("Invalid base64 - token corrupted during copy/paste");
-                    }
-                }
-                
-                let raw;
-                try {
-                    raw = JSON.parse(decoded);
-                } catch (e) {
-                    throw new Error("Invalid JSON structure - token may be truncated");
-                }
-                
-                if (!raw.sdp || !raw.sdp.type || !raw.sdp.sdp) {
-                    throw new Error("Missing SDP data in token");
-                }
-                if (!raw.key || !Array.isArray(raw.key) || raw.key.length !== 65) {
-                    throw new Error("Invalid encryption key in token");
-                }
-                
-                if (!pc) {
-                    createPeerConnection();
-                }
-                
-                updateStatus("Connecting...", "waiting");
-                
+                const val = document.getElementById('sdp-io').value.trim();
+                const raw = JSON.parse(atob(val));
                 await pc.setRemoteDescription(new RTCSessionDescription(raw.sdp));
                 await deriveKey(new Uint8Array(raw.key).buffer);
 
                 if (raw.sdp.type === "offer") {
-                    updateStatus("Creating Answer...", "waiting");
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
-                    
-                    isTokenGenerated = false;
-                    iceGatheringComplete = false;
-                    document.getElementById('ice-status').classList.remove('hidden');
-                    
-                    pc.onicecandidate = (e) => { 
-                        if (!e.candidate) {
-                            iceGatheringComplete = true;
-                            finalizeSDP(); 
-                        }
-                    };
-                    
-                    setTimeout(() => {
-                        if (!isTokenGenerated) {
-                            iceGatheringComplete = true;
-                            finalizeSDP();
-                        }
-                    }, 6000);
-                    
-                    document.getElementById('connect-btn').innerText = "Copy Answer Token ↑";
-                } else {
-                    document.getElementById('connect-btn').innerText = "Answer Received - Connecting...";
+                    pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
+                    setTimeout(finalizeSDP, 5000);
                 }
-                
-                document.getElementById('error-log').classList.add('hidden');
-                
-            } catch (e) { 
-                showError(e.message);
-                console.error("Connection error:", e);
-                document.getElementById('sdp-io').classList.add('shake');
-                setTimeout(() => document.getElementById('sdp-io').classList.remove('shake'), 500);
-            }
+            } catch (e) { alert("Invalid Token!"); console.error(e); }
         };
+
+        pc.ondatachannel = (e) => { dataChannel = e.channel; setupDC(); };
 
         function setupDC() {
             dataChannel.onopen = () => {
                 document.getElementById('step-1').classList.add('hidden');
                 document.getElementById('step-2').classList.remove('hidden');
-                updateStatus("Secure Channel Open", "success");
             };
-            
-            dataChannel.onerror = (e) => {
-                showError("DataChannel error: " + (e.message || "Unknown error"));
-            };
-            
-            dataChannel.onclose = () => {
-                showError("Connection closed by peer");
-                updateStatus("Disconnected", "error");
-            };
-            
             dataChannel.onmessage = async (e) => {
                 try {
                     const { iv, data } = JSON.parse(e.data);
-                    if (!iv || !data) throw new Error("Invalid message format");
-                    
-                    const plain = await crypto.subtle.decrypt(
-                        { name: "AES-GCM", iv: new Uint8Array(iv) }, 
-                        sharedSecretKey, 
-                        new Uint8Array(data)
-                    );
+                    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, sharedSecretKey, new Uint8Array(data));
                     renderMsg(new TextDecoder().decode(plain), 'partner');
-                } catch (err) { 
-                    console.error("Decryption error:", err);
-                    showError("Decryption failed - possible key mismatch");
-                }
+                } catch (err) { console.error("Decryption error"); }
             };
-        }
-
-        function updateStatus(text, type) {
-            const tag = document.getElementById('status-tag');
-            tag.innerText = text;
-            if (type === 'ready') {
-                tag.className = "text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 uppercase tracking-widest font-bold";
-            } else if (type === 'success') {
-                tag.className = "text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 uppercase tracking-widest font-bold";
-            } else if (type === 'error') {
-                tag.className = "text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-red-900/50 text-red-400 uppercase tracking-widest font-bold";
-            } else if (type === 'waiting') {
-                tag.className = "text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-amber-900/50 text-amber-400 uppercase tracking-widest font-bold";
-            }
-        }
-
-        function showError(msg) {
-            const errDiv = document.getElementById('error-log');
-            const errText = document.getElementById('error-text');
-            errText.innerText = msg;
-            errDiv.classList.remove('hidden');
-            updateStatus("Error", "error");
         }
 
         document.getElementById('send-btn').onclick = async () => {
             const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            
-            if (!text) return;
-            if (!dataChannel) {
-                showError("No connection - generate or paste token first");
-                return;
-            }
-            if (dataChannel.readyState !== 'open') {
-                showError("Channel not open yet (state: " + dataChannel.readyState + ")");
-                return;
-            }
-            
-            try {
-                const iv = crypto.getRandomValues(new Uint8Array(12));
-                const ciphertext = await crypto.subtle.encrypt(
-                    { name: "AES-GCM", iv }, 
-                    sharedSecretKey, 
-                    new TextEncoder().encode(text)
-                );
-                dataChannel.send(JSON.stringify({ 
-                    iv: Array.from(iv), 
-                    data: Array.from(new Uint8Array(ciphertext)) 
-                }));
-                renderMsg(text, 'me');
-                input.value = '';
-            } catch (e) {
-                showError("Send failed: " + e.message);
-            }
+            if (!input.value || !dataChannel || dataChannel.readyState !== 'open') return;
+            const text = input.value;
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, sharedSecretKey, new TextEncoder().encode(text));
+            dataChannel.send(JSON.stringify({ iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) }));
+            renderMsg(text, 'me');
+            input.value = '';
         };
 
-        document.getElementById('copy-btn').onclick = async () => {
+        document.getElementById('copy-btn').onclick = () => {
             const el = document.getElementById('sdp-io');
-            const token = el.value;
-            
-            try {
-                await navigator.clipboard.writeText(token);
-                document.getElementById('copy-btn').innerText = "Copied!";
-            } catch (e) {
-                el.select();
-                el.setSelectionRange(0, 999999);
-                const success = document.execCommand('copy');
-                document.getElementById('copy-btn').innerText = success ? "Copied!" : "Select & Copy Manually";
-            }
-            
+            el.select();
+            document.execCommand('copy');
+            document.getElementById('copy-btn').innerText = "Copied!";
             setTimeout(() => document.getElementById('copy-btn').innerText = "Copy", 2000);
         };
-
-        document.getElementById('clear-btn').onclick = () => {
-            document.getElementById('sdp-io').value = '';
-            document.getElementById('clear-btn').classList.add('hidden');
-            document.getElementById('error-log').classList.add('hidden');
-        };
-
-        document.getElementById('sdp-io').addEventListener('input', (e) => {
-            const clearBtn = document.getElementById('clear-btn');
-            if (e.target.value.trim()) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-            }
-        });
 
         function renderMsg(msg, sender) {
             const div = document.createElement('div');
             div.className = `flex ${sender === 'me' ? 'justify-end' : 'justify-start'}`;
-            const escaped = msg.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            div.innerHTML = `<div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none text-white' : 'bg-slate-800 rounded-tl-none border border-slate-700 text-slate-200'} break-words overflow-wrap-anywhere">${escaped}</div>`;
+            div.innerHTML = `<div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none text-white' : 'bg-slate-800 rounded-tl-none border border-slate-700 text-slate-200'}">${msg}</div>`;
             const box = document.getElementById('messages');
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         }
 
         document.getElementById('burn-btn').onclick = () => {
-            if(confirm("DANGER: Wipe all keys and history? This cannot be undone.")) {
+            if(confirm("DANGER: Wiping RAM keys and chat history. This is permanent.")) {
                 document.getElementById('body-main').classList.add('burn-effect');
-                if (pc) try { pc.close(); } catch(e) {}
-                if (dataChannel) try { dataChannel.close(); } catch(e) {}
                 setTimeout(() => { location.reload(); }, 800);
             }
         };
-
-        document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('send-btn').click();
-            }
-        });
-
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
 
         initCrypto();
     </script>
