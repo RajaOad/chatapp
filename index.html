@@ -15,7 +15,7 @@
             overflow-x: hidden;
         }
         
-        /* Pro Glass Effect - v6.4 Style */
+        /* Pro Glass Effect */
         .glass-pro { 
             background: rgba(15, 23, 42, 0.8); 
             backdrop-filter: blur(25px) saturate(180%);
@@ -23,7 +23,7 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* Animated Border Glow - v6.4 Style */
+        /* Animated Border Glow */
         .glow-border {
             position: relative;
             border-radius: 1.5rem;
@@ -41,7 +41,6 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #334155; }
 
         .burn-flash { animation: flash 0.6s cubic-bezier(0.45, 0, 0.55, 1) forwards; }
         @keyframes flash { 0% { filter: brightness(1) blur(0); } 50% { filter: brightness(10) blur(10px); } 100% { filter: brightness(0) blur(40px); opacity: 0; } }
@@ -76,7 +75,10 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <button id="create-btn" class="group relative overflow-hidden bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl text-[10px] font-black tracking-widest text-white transition-all border border-slate-700">
-                        <span class="relative z-10">GENERATE OFFER</span>
+                        <span id="btn-text" class="relative z-10">GENERATE OFFER</span>
+                        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-slate-800 z-20">
+                            <div class="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
                         <div class="absolute inset-0 bg-gradient-to-r from-cyan-600/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500"></div>
                     </button>
                     <button id="answer-mode-btn" onclick="document.getElementById('sdp-io').placeholder='Paste Partner Offer...'" class="bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl text-[10px] font-black tracking-widest text-white transition-all border border-slate-700">
@@ -129,7 +131,6 @@
 
     <script>
         const DB_NAME = "Ghost_Final_Prod";
-        // Production STUN Servers for global NAT traversal
         const iceServers = [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
@@ -171,17 +172,6 @@
             } catch (e) { log("HTTPS_REQUIRED", "text-red-500"); }
         }
 
-        async function nuclearBurn() {
-            if (confirm("THIS WILL PERMANENTLY ERASE YOUR IDENTITY AND SESSION. PROCEED?")) {
-                document.getElementById('main-container').classList.add('burn-flash');
-                if (pc) pc.close();
-                indexedDB.deleteDatabase(DB_NAME);
-                localStorage.clear();
-                sessionStorage.clear();
-                setTimeout(() => location.reload(), 600);
-            }
-        }
-
         async function ratchet(inputKey, label) {
             const info = new TextEncoder().encode(`ghost-prod-${label}`);
             const master = await crypto.subtle.importKey("raw", inputKey, "HKDF", false, ["deriveKey"]);
@@ -193,6 +183,13 @@
         }
 
         async function startOffer() {
+            const btnText = document.getElementById('btn-text');
+            const loader = document.getElementById('loader');
+            
+            loader.classList.remove('hidden');
+            btnText.style.opacity = '0';
+            log("AUTO_GATHERING_ROUTES...", "text-cyan-400");
+
             pc = new RTCPeerConnection({ iceServers });
             dataChannel = pc.createDataChannel("chat", { ordered: true });
             setupDC(dataChannel);
@@ -200,14 +197,31 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
-            pc.onicecandidate = async e => {
+            // AUTO-FLEX: Timeout acts as a safety limit (3s)
+            const gatheringTimeout = setTimeout(() => finishOffer("TIMED_OUT"), 3000);
+
+            pc.onicecandidate = e => {
+                // If it finishes naturally before 3s, it triggers instantly
                 if (!e.candidate) {
-                    const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
-                    document.getElementById('sdp-io').value = btoa(JSON.stringify({ sdp: pc.localDescription, key: bufToHex(pub) }));
-                    document.getElementById('copy-btn').classList.remove('hidden');
-                    log("OFFER_READY");
+                    clearTimeout(gatheringTimeout);
+                    finishOffer("AUTO_COMPLETE");
                 }
             };
+
+            async function finishOffer(reason) {
+                // Prevent double execution
+                if (document.getElementById('sdp-io').value && reason === "TIMED_OUT") return;
+                
+                const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
+                const token = btoa(JSON.stringify({ sdp: pc.localDescription, key: bufToHex(pub) }));
+                
+                document.getElementById('sdp-io').value = token;
+                document.getElementById('copy-btn').classList.remove('hidden');
+                
+                loader.classList.add('hidden');
+                btnText.style.opacity = '1';
+                log(`OFFER_READY (${reason})`, "text-emerald-500");
+            }
         }
 
         async function connect() {
@@ -301,6 +315,17 @@
             dataChannel.send(JSON.stringify({ iv: bufToHex(iv), m: bufToHex(enc) }));
             render(val, 'me');
             sendChainKey = await ratchet(sendChainKey, "step");
+        }
+
+        async function nuclearBurn() {
+            if (confirm("THIS WILL PERMANENTLY ERASE YOUR IDENTITY AND SESSION. PROCEED?")) {
+                document.getElementById('main-container').classList.add('burn-flash');
+                if (pc) pc.close();
+                indexedDB.deleteDatabase(DB_NAME);
+                localStorage.clear();
+                sessionStorage.clear();
+                setTimeout(() => location.reload(), 600);
+            }
         }
 
         document.getElementById('send-btn').onclick = transmit;
