@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost-Chat: Hardened P2P v3.6</title>
+    <title>Ghost-Chat: Hardened P2P v3.6.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
         .hidden { display: none; }
-        .burn-effect { filter: grayscale(1) blur(10px); opacity: 0; pointer-events: none; }
         .log-line { font-family: monospace; font-size: 9px; border-left: 2px solid #334155; padding-left: 6px; margin-bottom: 2px; }
     </style>
 </head>
@@ -16,19 +15,16 @@
 
     <div id="main-container" class="max-w-lg w-full glass rounded-3xl p-8 shadow-2xl transition-all duration-500">
         <header class="mb-6 text-center">
-            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.6</h1>
+            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.6.1</h1>
             <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold border border-slate-700">Protected Mode</div>
         </header>
 
         <div id="step-1" class="space-y-4">
-
             <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
                 <p class="text-[11px] text-blue-400 leading-relaxed">
-                    <strong>Mobile Setup:</strong> 1. Gen Token. 2. Send to Peer. 3. Peer Pastes & Gen Answer. 4. You paste Answer back.
+                    <strong>Fixed Handshake:</strong> Generate token, send to peer. Peer pastes and sends their Answer token back to you. Both screens will flip when connected.
                 </p>
             </div>
-
-         
 
             <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Secure Token</button>
             
@@ -40,7 +36,7 @@
             <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold text-white transition-all">2. Verify & Connect</button>
 
             <div class="p-3 bg-black/40 rounded-xl border border-slate-800">
-                <div id="log-window" class="h-20 overflow-y-auto text-slate-400 scrollbar-hide">
+                <div id="log-window" class="h-20 overflow-y-auto text-slate-400 scrollbar-hide text-[9px]">
                     <div class="log-line text-cyan-500">Awaiting secure handshake...</div>
                 </div>
             </div>
@@ -58,7 +54,7 @@
                 <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Secret message...">
                 <button id="send-btn" class="bg-cyan-600 p-2 px-6 rounded-xl font-bold text-white text-sm">Send</button>
             </div>
-            <button id="burn-btn" class="mt-4 text-slate-600 hover:text-red-500 text-[9px] uppercase font-bold transition-all">Burn Session</button>
+            <button id="burn-btn" class="mt-4 text-slate-600 hover:text-red-500 text-[9px] uppercase font-bold transition-all text-center" onclick="location.reload()">Burn Session</button>
         </div>
     </div>
 
@@ -76,13 +72,11 @@
             logWin.scrollTop = logWin.scrollHeight;
         }
 
-        // --- NEW: Integrity Verification Logic ---
         async function generateIntegrityToken(payloadObj) {
             const encoder = new TextEncoder();
             const data = encoder.encode(JSON.stringify(payloadObj));
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
             return btoa(JSON.stringify({ ...payloadObj, _sig: hashHex }));
         }
 
@@ -93,10 +87,8 @@
             const encoder = new TextEncoder();
             const data = encoder.encode(JSON.stringify(raw));
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const currentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            
-            if (currentHash !== signature) throw new Error("Integrity Check Failed: Token Modified.");
+            const currentHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            if (currentHash !== signature) throw new Error("Integrity Check Failed.");
             return raw;
         }
 
@@ -120,17 +112,15 @@
             isTokenGenerated = true;
             const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
             const payload = { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp }, key: Array.from(new Uint8Array(pubKey)) };
-            
-            // Apply integrity protection
             document.getElementById('sdp-io').value = await generateIntegrityToken(payload);
-            document.getElementById('create-btn').innerText = "SECURE TOKEN READY";
+            document.getElementById('create-btn').innerText = "TOKEN READY";
             document.getElementById('copy-btn').classList.remove('hidden');
-            logger("Tamper-proof token generated.", "success");
+            logger("Token ready. Share it with peer.", "success");
         };
 
         document.getElementById('create-btn').onclick = async () => {
             dataChannel = pc.createDataChannel("chat");
-            setupDC();
+            setupDC(dataChannel);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
@@ -149,13 +139,20 @@
                     pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
                     setTimeout(finalizeSDP, 6000);
                 }
-            } catch (e) { logger(e.message, "error"); }
+            } catch (e) { logger("Check Failed.", "error"); }
         };
 
-        function setupDC() {
+        // This is the CRITICAL FIX: Listening for the channel to be created by the other side
+        pc.ondatachannel = (event) => {
+            setupDC(event.channel);
+        };
+
+        function setupDC(channel) {
+            dataChannel = channel;
             dataChannel.onopen = () => {
                 document.getElementById('step-1').classList.add('hidden');
                 document.getElementById('step-2').classList.remove('hidden');
+                logger("Connection Live.", "success");
             };
             dataChannel.onmessage = async (e) => {
                 const { iv, data } = JSON.parse(e.data);
@@ -166,6 +163,7 @@
 
         document.getElementById('send-btn').onclick = async () => {
             const input = document.getElementById('msg-input');
+            if(!input.value || dataChannel.readyState !== 'open') return;
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, sharedSecretKey, new TextEncoder().encode(input.value));
             dataChannel.send(JSON.stringify({ iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) }));
@@ -181,7 +179,6 @@
             document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
 
-        document.getElementById('burn-btn').onclick = () => location.reload();
         document.getElementById('copy-btn').onclick = () => {
             navigator.clipboard.writeText(document.getElementById('sdp-io').value);
             document.getElementById('copy-btn').innerText = "DONE";
