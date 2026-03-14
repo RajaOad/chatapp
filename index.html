@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost-Chat: E2EE P2P</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .hidden { display: none; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-[#020617] text-slate-200 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-lg w-full glass rounded-3xl p-8 shadow-2xl">
+        <header class="mb-8">
+            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT</h1>
+            <p class="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">End-to-End Encrypted P2P Chat</p>
+        </header>
+
+        <div id="step-0" class="space-y-4">
+            <label class="block text-sm font-medium text-slate-400">Set Shared Secret (Must match partner)</label>
+            <input id="passphrase" type="password" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 focus:ring-2 focus:ring-cyan-500 outline-none" placeholder="Enter a strong password...">
+            <button onclick="lockPassphrase()" class="w-full bg-cyan-600 hover:bg-cyan-500 py-4 rounded-xl font-bold transition-all transform active:scale-95">Lock & Initialize</button>
+        </div>
+
+        <div id="step-1" class="hidden space-y-6">
+            <div class="flex flex-col gap-3">
+                <button id="create-btn" class="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600">Generate My Connection Token</button>
+                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono" placeholder="Paste partner's token here..."></textarea>
+                <button id="connect-btn" class="bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold">Finalize Connection</button>
+            </div>
+        </div>
+
+        <div id="step-2" class="hidden flex flex-col h-[450px]">
+            <div id="messages" class="flex-1 overflow-y-auto space-y-4 mb-4 pr-2"></div>
+            <div class="flex gap-2 p-2 bg-slate-900 rounded-2xl border border-slate-800">
+                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none" placeholder="Write an encrypted message...">
+                <button id="send-btn" class="bg-cyan-600 p-2 px-6 rounded-xl font-bold">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        let dataChannel;
+        let cryptoKey;
+
+        // --- CRYPTO UTILS ---
+        async function deriveKey(passphrase) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+            return crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: enc.encode("p2p-salt"), iterations: 100000, hash: "SHA-256" },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false, ["encrypt", "decrypt"]
+            );
+        }
+
+        async function encrypt(text) {
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(text);
+            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, encoded);
+            return btoa(JSON.stringify({ iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) }));
+        }
+
+        async function decrypt(blob) {
+            const { iv, data } = JSON.parse(atob(blob));
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, cryptoKey, new Uint8Array(data));
+            return new TextDecoder().decode(decrypted);
+        }
+
+        // --- UI FLOW ---
+        async function lockPassphrase() {
+            const pass = document.getElementById('passphrase').value;
+            if (pass.length < 6) return alert("Password too short!");
+            cryptoKey = await deriveKey(pass);
+            document.getElementById('step-0').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+        }
+
+        // --- P2P LOGIC ---
+        document.getElementById('create-btn').onclick = async () => {
+            dataChannel = pc.createDataChannel("secure-chat");
+            setupDC();
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            pc.onicecandidate = e => { if (!e.candidate) document.getElementById('sdp-io').value = btoa(JSON.stringify(pc.localDescription)); };
+        };
+
+        document.getElementById('connect-btn').onclick = async () => {
+            const raw = document.getElementById('sdp-io').value;
+            const remote = JSON.parse(atob(raw));
+            await pc.setRemoteDescription(remote);
+            if (remote.type === "offer") {
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                pc.onicecandidate = e => { if (!e.candidate) document.getElementById('sdp-io').value = btoa(JSON.stringify(pc.localDescription)); };
+            }
+        };
+
+        pc.ondatachannel = e => { dataChannel = e.channel; setupDC(); };
+
+        function setupDC() {
+            dataChannel.onopen = () => {
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('step-2').classList.remove('hidden');
+            };
+            dataChannel.onmessage = async (e) => {
+                const plain = await decrypt(e.data);
+                renderMsg(plain, 'partner');
+            };
+        }
+
+        document.getElementById('send-btn').onclick = async () => {
+            const input = document.getElementById('msg-input');
+            const cipher = await encrypt(input.value);
+            dataChannel.send(cipher);
+            renderMsg(input.value, 'me');
+            input.value = '';
+        };
+
+        function renderMsg(msg, sender) {
+            const div = document.createElement('div');
+            div.className = `flex ${sender === 'me' ? 'justify-end' : 'justify-start'}`;
+            div.innerHTML = `<div class="max-w-[80%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none' : 'bg-slate-800 rounded-tl-none'}">${msg}</div>`;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+    </script>
+</body>
+</html>
