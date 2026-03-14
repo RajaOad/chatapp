@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost-Chat: Secure P2P (Mobile Fix)</title>
+    <title>Ghost-Chat: Secure P2P v3.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
@@ -13,54 +13,65 @@
         .burn-effect { filter: grayscale(1) blur(10px); opacity: 0; pointer-events: none; }
         @keyframes pulse-cyan { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .gathering { animation: pulse-cyan 1.5s infinite; }
+        .log-line { font-family: monospace; font-size: 9px; border-left: 2px solid #334155; padding-left: 6px; margin-bottom: 2px; }
+        .msg-status { font-size: 8px; margin-top: 2px; opacity: 0.6; }
     </style>
 </head>
 <body class="bg-[#020617] text-slate-200 font-sans min-h-screen flex items-center justify-center p-4 transition-all duration-1000" id="body-main">
 
     <div id="main-container" class="max-w-lg w-full glass rounded-3xl p-8 shadow-2xl transition-all duration-500">
         <header class="mb-6 text-center">
-            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.2</h1>
-            <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold">Initializing...</div>
+            <h1 class="text-3xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">GHOST-CHAT v3.5</h1>
+            <div id="status-tag" class="text-[10px] mt-2 inline-block px-3 py-1 rounded-full bg-slate-800 text-slate-400 uppercase tracking-widest font-bold border border-slate-700">Initializing...</div>
         </header>
 
         <div id="step-1" class="space-y-4">
-            <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
-                <p class="text-[11px] text-blue-400 leading-relaxed">
-                    <strong>Mobile Setup:</strong> 1. Gen Token. 2. Send to Peer. 3. Peer Pastes & Gen Answer. 4. You paste Answer back.
-                </p>
-            </div>
-            
-            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Token</button>
+            <button id="create-btn" class="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-xl text-sm font-semibold border border-slate-600 transition-all text-white">1. Generate Connection Token</button>
             
             <div class="relative">
-                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-40 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
-                <button id="copy-btn" class="absolute bottom-2 right-2 bg-cyan-600 hover:bg-cyan-500 px-3 py-1 rounded text-[10px] text-white font-bold hidden">COPY TOKEN</button>
+                <textarea id="sdp-io" class="w-full bg-black/50 border border-slate-800 rounded-xl p-4 text-[10px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400" placeholder="Paste partner's token here..."></textarea>
+                <button id="copy-btn" class="absolute bottom-2 right-2 bg-cyan-600 hover:bg-cyan-500 px-3 py-1 rounded text-[10px] text-white font-bold hidden shadow-lg">COPY</button>
             </div>
             
-            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-900/20 text-white transition-all">2. Process Received Token</button>
+            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold text-white shadow-lg shadow-blue-900/40 transition-all">2. Process & Finalize</button>
+
+            <div class="p-3 bg-black/40 rounded-xl border border-slate-800">
+                <div class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-widest flex justify-between">
+                    <span>System Diagnostics</span>
+                    <span id="ice-status" class="text-slate-600">ICE: Idle</span>
+                </div>
+                <div id="log-window" class="h-20 overflow-y-auto scrollbar-hide text-slate-400">
+                    <div class="log-line text-cyan-500">Core Ready. Waiting for local/remote key.</div>
+                </div>
+            </div>
         </div>
 
-        <div id="step-2" class="hidden flex flex-col h-[550px]">
-            <button id="burn-btn" class="w-full mb-4 bg-red-950/20 hover:bg-red-600 border border-red-900/50 text-red-500 hover:text-white text-[10px] py-2 rounded-xl font-bold transition-all uppercase tracking-[0.2em]">Burn Session (Wipe RAM)</button>
-
+        <div id="step-2" class="hidden flex flex-col h-[600px]">
             <div class="flex flex-col mb-4 pb-3 border-b border-slate-800 space-y-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">● Secure Link Active</span>
-                    <span id="fingerprint" class="text-[10px] text-white font-mono bg-emerald-500/20 px-3 py-1 rounded-lg border border-emerald-500/30">SHARED ID: ----</span>
+                    <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Encrypted Link
+                    </span>
+                    <span id="fingerprint" class="text-[10px] text-white font-mono bg-emerald-500/20 px-3 py-1 rounded-lg border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">ID: ----</span>
+                </div>
+                <div class="flex justify-between text-[8px] text-slate-500 font-mono uppercase px-1">
+                    <span id="my-id">Loc: ...</span>
+                    <span id="peer-id">Rem: ...</span>
                 </div>
             </div>
 
             <div id="messages" class="flex-1 overflow-y-auto space-y-4 mb-4 pr-2"></div>
 
-            <div class="flex gap-2 p-2 bg-slate-900 rounded-2xl border border-slate-800 focus-within:border-cyan-500 transition-colors">
-                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Type encrypted message...">
-                <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 p-2 px-6 rounded-xl font-bold text-white transition-colors text-sm">Send</button>
+            <div class="flex gap-2 p-2 bg-slate-900 rounded-2xl border border-slate-800 focus-within:border-cyan-500 transition-all">
+                <input id="msg-input" type="text" class="flex-1 bg-transparent px-2 outline-none text-sm text-white" placeholder="Type a message...">
+                <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 p-2 px-6 rounded-xl font-bold text-white text-sm transition-all active:scale-95">Send</button>
             </div>
+            
+            <button id="burn-btn" class="mt-4 text-slate-600 hover:text-red-500 text-[9px] uppercase font-bold transition-all tracking-widest">Wipe & Burn Session</button>
         </div>
     </div>
 
     <script>
-        // Config with robust TURN for mobile networks
         const iceConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -77,106 +88,114 @@
         let sharedSecretKey;
         let isTokenGenerated = false;
 
-        async function initCrypto() {
-            localKeyPair = await window.crypto.subtle.generateKey(
-                { name: "ECDH", namedCurve: "P-256" },
-                false, ["deriveKey"]
-            );
-            document.getElementById('status-tag').innerText = "Ready to Handshake";
+        function logger(msg, type = 'info') {
+            const logWin = document.getElementById('log-window');
+            const line = document.createElement('div');
+            line.className = `log-line ${type === 'error' ? 'text-red-400 border-red-900' : type === 'success' ? 'text-emerald-400 border-emerald-900' : 'text-slate-400'}`;
+            line.innerText = `[${new Date().toLocaleTimeString([], {hour12: false})}] ${msg}`;
+            logWin.appendChild(line);
+            logWin.scrollTop = logWin.scrollHeight;
         }
 
-        async function createSharedFingerprint(remotePubKeyBuffer) {
+        async function initCrypto() {
+            localKeyPair = await window.crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
+            logger("ECDH P-256 Keys generated.", "success");
+            document.getElementById('status-tag').innerText = "Keys Ready";
+        }
+
+        async function updateUIKeys(remotePubKeyBuffer) {
             const localPubKeyBuffer = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
-            const toHex = (buf, len=8) => Array.from(new Uint8Array(buf)).slice(0, len).map(b => b.toString(16).padStart(2, '0')).join(':').toUpperCase();
+            const toHex = (buf, len=4) => Array.from(new Uint8Array(buf)).slice(0, len).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
             
-            const keys = [new Uint8Array(localPubKeyBuffer), new Uint8Array(remotePubKeyBuffer)];
-            keys.sort((a, b) => {
-                for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
+            document.getElementById('my-id').innerText = `Loc: ${toHex(localPubKeyBuffer)}`;
+            document.getElementById('peer-id').innerText = `Rem: ${toHex(remotePubKeyBuffer)}`;
+
+            const keys = [new Uint8Array(localPubKeyBuffer), new Uint8Array(remotePubKeyBuffer)].sort((a,b) => {
+                for(let i=0; i<a.length; i++) if(a[i] !== b[i]) return a[i] - b[i];
                 return 0;
             });
-
-            const combined = new Uint8Array(keys[0].length + keys[1].length);
-            combined.set(keys[0], 0); combined.set(keys[1], keys[0].length);
+            const combined = new Uint8Array([...keys[0], ...keys[1]]);
             const hash = await crypto.subtle.digest("SHA-256", combined);
             document.getElementById('fingerprint').innerText = `ID: ${toHex(hash, 6)}`;
+            logger("Handshake Fingerprint verified.", "success");
         }
 
         async function deriveKey(remotePublicKeyBuffer) {
-            const remotePublicKey = await window.crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
-            sharedSecretKey = await window.crypto.subtle.deriveKey({ name: "ECDH", public: remotePublicKey }, localKeyPair.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-            await createSharedFingerprint(remotePublicKeyBuffer);
+            try {
+                const remotePublicKey = await window.crypto.subtle.importKey("raw", remotePublicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
+                sharedSecretKey = await window.crypto.subtle.deriveKey({ name: "ECDH", public: remotePublicKey }, localKeyPair.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+                await updateUIKeys(remotePublicKeyBuffer);
+                logger("AES-GCM-256 Master Key derived.", "success");
+            } catch(e) { logger("Key exchange failed.", "error"); }
         }
 
         const finalizeSDP = async () => {
             if (isTokenGenerated) return;
             isTokenGenerated = true;
-
-            let sdp = pc.localDescription.sdp;
             const pubKey = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
-            const payload = { sdp: { type: pc.localDescription.type, sdp: sdp }, key: Array.from(new Uint8Array(pubKey)) };
-            
+            const payload = { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp }, key: Array.from(new Uint8Array(pubKey)) };
             document.getElementById('sdp-io').value = btoa(JSON.stringify(payload));
-            document.getElementById('create-btn').innerText = "TOKEN GENERATED ✓";
-            document.getElementById('create-btn').classList.remove('gathering');
+            document.getElementById('create-btn').innerText = "TOKEN READY ✓";
+            document.getElementById('create-btn').classList.remove('gathering', 'bg-slate-800');
+            document.getElementById('create-btn').classList.add('bg-emerald-600');
             document.getElementById('copy-btn').classList.remove('hidden');
-            document.getElementById('status-tag').innerText = "Send token to peer";
+            document.getElementById('status-tag').innerText = "Step 2: Share Token";
+            logger("Routes gathered. Copy token now.", "success");
+        };
+
+        pc.onicegatheringstatechange = () => {
+            const state = pc.iceGatheringState;
+            document.getElementById('ice-status').innerText = `ICE: ${state.toUpperCase()}`;
+            if(state === 'gathering') logger("Searching for P2P paths...");
         };
 
         document.getElementById('create-btn').onclick = async () => {
             isTokenGenerated = false;
-            document.getElementById('create-btn').innerText = "GATHERING ROUTES...";
+            document.getElementById('create-btn').innerText = "GATHERING...";
             document.getElementById('create-btn').classList.add('gathering');
-            
-            dataChannel = pc.createDataChannel("secure-chat", { ordered: true });
+            dataChannel = pc.createDataChannel("chat", { ordered: true });
             setupDC();
-            
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            
             pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
-            setTimeout(finalizeSDP, 6000); // 6s for slow mobile networks
+            setTimeout(finalizeSDP, 7000); 
         };
 
         document.getElementById('connect-btn').onclick = async () => {
             try {
-                // Hardened cleaning for mobile paste
                 let val = document.getElementById('sdp-io').value.trim().replace(/\s/g, '');
-                if (!val) return alert("Paste token first!");
-
+                if(!val) return logger("No token provided.", "error");
                 const raw = JSON.parse(atob(val));
+                logger(`Reading ${raw.sdp.type} from partner...`);
                 await pc.setRemoteDescription(new RTCSessionDescription(raw.sdp));
                 await deriveKey(new Uint8Array(raw.key).buffer);
-
                 if (raw.sdp.type === "offer") {
-                    isTokenGenerated = false;
-                    document.getElementById('status-tag').innerText = "Generating Answer...";
+                    logger("Creating Answer...");
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     pc.onicecandidate = (e) => { if (!e.candidate) finalizeSDP(); };
-                    setTimeout(finalizeSDP, 6000);
-                } else {
-                    document.getElementById('status-tag').innerText = "Handshake Finalized";
+                    setTimeout(finalizeSDP, 7000);
                 }
-            } catch (e) { 
-                alert("INVALID TOKEN: Make sure you copied the entire string without missing characters."); 
-                console.error(e); 
-            }
+            } catch (e) { logger("Corrupted token pasted.", "error"); }
         };
 
-        pc.ondatachannel = (e) => { dataChannel = e.channel; setupDC(); };
+        pc.ondatachannel = (e) => { 
+            dataChannel = e.channel; 
+            setupDC(); 
+            logger("Peer connected successfully."); 
+        };
 
         function setupDC() {
             dataChannel.onopen = () => {
                 document.getElementById('step-1').classList.add('hidden');
                 document.getElementById('step-2').classList.remove('hidden');
                 document.getElementById('status-tag').innerText = "CONNECTED";
+                document.getElementById('status-tag').classList.replace('bg-slate-800', 'bg-emerald-500/20');
             };
             dataChannel.onmessage = async (e) => {
-                try {
-                    const { iv, data } = JSON.parse(e.data);
-                    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, sharedSecretKey, new Uint8Array(data));
-                    renderMsg(new TextDecoder().decode(plain), 'partner');
-                } catch (err) { console.error("Decryption error"); }
+                const { iv, data } = JSON.parse(e.data);
+                const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, sharedSecretKey, new Uint8Array(data));
+                renderMsg(new TextDecoder().decode(plain), 'partner');
             };
         }
 
@@ -194,28 +213,27 @@
         document.getElementById('copy-btn').onclick = () => {
             const el = document.getElementById('sdp-io');
             el.select();
-            el.setSelectionRange(0, 99999); // For mobile
             navigator.clipboard.writeText(el.value);
-            document.getElementById('copy-btn').innerText = "COPIED!";
-            setTimeout(() => document.getElementById('copy-btn').innerText = "COPY TOKEN", 2000);
+            document.getElementById('copy-btn').innerText = "COPIED";
+            setTimeout(()=> document.getElementById('copy-btn').innerText = "COPY", 2000);
         };
 
         function renderMsg(msg, sender) {
             const div = document.createElement('div');
             div.className = `flex ${sender === 'me' ? 'justify-end' : 'justify-start'}`;
-            div.innerHTML = `<div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none text-white' : 'bg-slate-800 rounded-tl-none border border-slate-700 text-slate-200'}">${msg}</div>`;
-            const box = document.getElementById('messages');
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            div.innerHTML = `
+                <div class="max-w-[85%] p-3 rounded-2xl text-sm ${sender === 'me' ? 'bg-blue-600 rounded-tr-none' : 'bg-slate-800 rounded-tl-none border border-slate-700'}">
+                    <div>${msg}</div>
+                    <div class="flex items-center justify-end gap-1 msg-status">
+                        ${time} ${sender === 'me' ? '<span>✓</span>' : ''}
+                    </div>
+                </div>`;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
 
-        document.getElementById('burn-btn').onclick = () => {
-            if(confirm("Burn session? This wipes all keys from memory.")) {
-                document.getElementById('body-main').classList.add('burn-effect');
-                setTimeout(() => { location.reload(); }, 800);
-            }
-        };
-
+        document.getElementById('burn-btn').onclick = () => { if(confirm("Destroy all RAM data?")) location.reload(); };
         initCrypto();
     </script>
 </body>
