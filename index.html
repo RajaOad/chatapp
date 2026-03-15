@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost-Chat v6.7 | Elite Production</title>
+    <title>Ghost-Chat v6.9 | Elite Production</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { --glow: #06b6d4; }
@@ -14,16 +16,12 @@
             font-family: 'JetBrains Mono', monospace; 
             overflow-x: hidden;
         }
-        
-        /* Pro Glass Effect */
         .glass-pro { 
             background: rgba(15, 23, 42, 0.8); 
             backdrop-filter: blur(25px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
-
-        /* Animated Border Glow */
         .glow-border {
             position: relative;
             border-radius: 1.5rem;
@@ -36,17 +34,14 @@
             animation: rotate 6s linear infinite; opacity: 0.5;
         }
         @keyframes rotate { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
-
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-
-        .burn-flash { animation: flash 0.6s cubic-bezier(0.45, 0, 0.55, 1) forwards; }
-        @keyframes flash { 0% { filter: brightness(1) blur(0); } 50% { filter: brightness(10) blur(10px); } 100% { filter: brightness(0) blur(40px); opacity: 0; } }
-
+        .burn-flash { animation: flash 0.6s forwards; }
+        @keyframes flash { 0% { filter: brightness(1); } 50% { filter: brightness(10) blur(10px); } 100% { filter: brightness(0); opacity: 0; } }
         .mes-in { animation: slideUp 0.3s ease-out forwards; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #qr-gen-canvas img { margin: 0 auto; border: 4px solid white; border-radius: 0.5rem; }
+        #qr-reader { border: none !important; border-radius: 1rem; overflow: hidden; }
     </style>
 </head>
 <body class="text-slate-300 min-h-screen flex items-center justify-center p-4">
@@ -55,89 +50,77 @@
         <div class="bg-[#020617]/90 rounded-[1.4rem] p-8">
             <header class="flex justify-between items-start mb-8">
                 <div>
-                    <h1 class="text-3xl font-black tracking-tighter text-white italic">GHOST<span class="text-cyan-500 not-italic">V6.7</span></h1>
+                    <h1 class="text-3xl font-black tracking-tighter text-white italic">GHOST<span class="text-cyan-500 not-italic">V6.9</span></h1>
                     <div class="flex items-center gap-2 mt-1">
                         <span id="status-led" class="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_#06b6d4]"></span>
                         <p id="status-text" class="text-[9px] text-slate-500 uppercase font-bold tracking-[0.3em]">Hardware Crypto Ready</p>
                     </div>
                 </div>
                 <div class="flex flex-col items-end">
-                    <div id="id-badge" class="bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full text-[10px] text-cyan-400 font-bold shadow-[0_0_15px_rgba(6,182,212,0.1)]">ID: --</div>
-                    <span id="ping-val" class="text-[8px] text-slate-600 mt-1 mr-1">LATENCY: -- MS</span>
+                    <div id="id-badge" class="bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full text-[10px] text-cyan-400 font-bold">ID: --</div>
+                    <span id="ping-val" class="text-[8px] text-slate-600 mt-1 mr-1 uppercase">Latency: -- ms</span>
                 </div>
             </header>
 
             <div id="setup-view" class="space-y-6">
-                <div class="group relative p-4 bg-slate-900/50 border border-slate-800 rounded-2xl transition-all hover:border-slate-700">
-                    <span class="text-[9px] font-black text-slate-500 uppercase mb-2 block tracking-widest">Identity Fingerprint</span>
-                    <div id="my-fingerprint" class="text-[10px] text-slate-400 leading-relaxed break-all font-mono">ENCRYPTING_IDENTITY...</div>
+                <div class="grid grid-cols-2 gap-4">
+                    <button id="create-btn" class="bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl text-[10px] font-black tracking-widest text-white border border-slate-700 transition-all">
+                        GENERATE OFFER
+                    </button>
+                    <button id="scan-btn" onclick="startScanner()" class="bg-cyan-600 hover:bg-cyan-500 p-4 rounded-2xl text-[10px] font-black tracking-widest text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all">
+                        SCAN QR CODE
+                    </button>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <button id="create-btn" class="group relative overflow-hidden bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl text-[10px] font-black tracking-widest text-white transition-all border border-slate-700">
-                        <span id="btn-text" class="relative z-10">GENERATE OFFER</span>
-                        <div id="loader" class="hidden absolute inset-0 flex items-center justify-center bg-slate-800 z-20">
-                            <div class="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                        <div class="absolute inset-0 bg-gradient-to-r from-cyan-600/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500"></div>
-                    </button>
-                    <button id="answer-mode-btn" onclick="document.getElementById('sdp-io').placeholder='Paste Partner Offer...'" class="bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl text-[10px] font-black tracking-widest text-white transition-all border border-slate-700">
-                        PREPARE ANSWER
-                    </button>
+                <div id="scanner-container" class="hidden relative p-2 bg-black/50 rounded-2xl border border-slate-800">
+                    <div id="qr-reader" class="w-full"></div>
+                    <button onclick="stopScanner()" class="absolute top-4 right-4 bg-red-600 text-white text-[8px] px-2 py-1 rounded font-bold">EXIT SCAN</button>
+                </div>
+
+                <div id="qr-display-container" class="hidden text-center p-4 bg-white/5 rounded-2xl border border-slate-800 animate-pulse">
+                    <div id="qr-gen-canvas" class="mb-4"></div>
+                    <span class="text-[9px] font-black text-cyan-400 tracking-widest">PARTNER MUST SCAN THIS</span>
                 </div>
 
                 <div class="relative group">
-                    <textarea id="sdp-io" class="w-full bg-black/40 border border-slate-800 rounded-2xl p-4 text-[11px] h-32 font-mono focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none text-cyan-400 transition-all resize-none" placeholder="Paste handshake token..."></textarea>
-                    <button id="copy-btn" class="absolute bottom-4 right-4 bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold hidden uppercase transition-all shadow-lg">Copy Token</button>
+                    <textarea id="sdp-io" class="w-full bg-black/40 border border-slate-800 rounded-2xl p-4 text-[11px] h-32 font-mono focus:border-cyan-500 outline-none text-cyan-400 transition-all resize-none" placeholder="Paste handshake token..."></textarea>
+                    <button id="copy-btn" class="absolute bottom-4 right-4 bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold hidden uppercase">Copy</button>
                 </div>
                 
-                <button id="connect-btn" class="w-full bg-cyan-600 hover:bg-cyan-500 p-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all transform active:scale-[0.98]">
+                <button id="connect-btn" class="w-full bg-slate-800 hover:bg-emerald-600 p-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white transition-all transform active:scale-[0.98]">
                     INITIALIZE TUNNEL
                 </button>
 
-                <div id="log-window" class="h-12 overflow-y-auto text-[8px] text-slate-600 uppercase font-bold tracking-tighter space-y-1"></div>
+                <div id="log-window" class="h-12 overflow-y-auto text-[8px] text-slate-600 uppercase font-bold space-y-1"></div>
             </div>
 
             <div id="chat-view" class="hidden flex flex-col h-[550px]">
                 <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800/50">
-                    <div class="flex gap-4">
-                        <div class="flex flex-col">
-                            <span class="text-[8px] text-slate-500 font-bold tracking-widest">SECURITY</span>
-                            <span class="text-[10px] text-emerald-400 font-black">ENCRYPTED</span>
-                        </div>
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-slate-500 font-bold tracking-widest">SECURITY</span>
+                        <span class="text-[10px] text-emerald-400 font-black">ENCRYPTED</span>
                     </div>
-                    <div class="text-right">
-                        <span id="safety-number" class="text-[10px] text-cyan-400 font-black tracking-widest bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">SN: ---- ----</span>
-                    </div>
+                    <div id="safety-number" class="text-[10px] text-cyan-400 font-black tracking-widest bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">SN: ---- ----</div>
                 </div>
 
-                <div id="messages" class="flex-1 overflow-y-auto space-y-4 mb-6 pr-2 scroll-smooth"></div>
+                <div id="messages" class="flex-1 overflow-y-auto space-y-4 mb-6 pr-2"></div>
 
-                <div class="flex gap-2 p-1.5 bg-slate-900/80 rounded-2xl border border-slate-800 focus-within:border-cyan-500/50 transition-all shadow-inner">
-                    <input id="msg-input" type="text" autocomplete="off" class="flex-1 bg-transparent px-4 outline-none text-xs text-white placeholder-slate-600" placeholder="Transmit secure packet...">
-                    <button id="send-btn" class="bg-white text-black px-6 py-2 rounded-xl font-black text-[10px] hover:bg-cyan-500 hover:text-white transition-all uppercase">Send</button>
+                <div class="flex gap-2 p-1.5 bg-slate-900/80 rounded-2xl border border-slate-800 focus-within:border-cyan-500/50">
+                    <input id="msg-input" type="text" autocomplete="off" class="flex-1 bg-transparent px-4 outline-none text-xs text-white" placeholder="Transmit packet...">
+                    <button id="send-btn" class="bg-white text-black px-6 py-2 rounded-xl font-black text-[10px] hover:bg-cyan-500 hover:text-white uppercase transition-all">Send</button>
                 </div>
                 
-                <div class="flex justify-center mt-6">
-                    <button class="group flex items-center gap-2 text-slate-700 hover:text-red-500 transition-colors" onclick="nuclearBurn()">
-                        <span class="h-px w-8 bg-slate-800 group-hover:bg-red-900"></span>
-                        <span class="text-[9px] font-black uppercase tracking-[0.3em]">Nuclear Burn Session</span>
-                        <span class="h-px w-8 bg-slate-800 group-hover:bg-red-900"></span>
-                    </button>
-                </div>
+                <button class="mt-6 text-slate-700 hover:text-red-500 text-[9px] font-black uppercase tracking-[0.3em] transition-colors" onclick="nuclearBurn()">
+                    Nuclear Burn Session
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        const DB_NAME = "Ghost_Final_Prod";
-        const iceServers = [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun.services.mozilla.com' }
-        ];
-
-        let pc, dataChannel, identityKey, sendChainKey, recvChainKey;
+        const DB_NAME = "Ghost_Final_QR";
+        const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+        let pc, dataChannel, identityKey, sendChainKey, recvChainKey, html5QrCode;
 
         const bufToHex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
         const hexToBuf = h => new Uint8Array(h.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
@@ -149,79 +132,64 @@
         }
 
         async function init() {
-            try {
-                const request = indexedDB.open(DB_NAME, 1);
-                request.onupgradeneeded = e => e.target.result.createObjectStore("keys");
-                request.onsuccess = e => {
-                    const db = e.target.result;
-                    const store = db.transaction("keys", "readwrite").objectStore("keys");
-                    const getReq = store.get("idKey");
-                    getReq.onsuccess = async () => {
-                        if (getReq.result) identityKey = getReq.result;
-                        else {
-                            identityKey = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
-                            store.put(identityKey, "idKey");
-                        }
-                        const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
-                        const hex = bufToHex(pub).toUpperCase();
-                        document.getElementById('my-fingerprint').innerText = hex.match(/.{1,8}/g).join(' ');
-                        document.getElementById('id-badge').innerText = `ID: ${hex.slice(0,8)}`;
-                        log("CRYPTO_ENGINE_SYNCED", "text-cyan-500");
-                    };
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = e => e.target.result.createObjectStore("keys");
+            request.onsuccess = e => {
+                const db = e.target.result;
+                const store = db.transaction("keys", "readwrite").objectStore("keys");
+                const getReq = store.get("idKey");
+                getReq.onsuccess = async () => {
+                    if (getReq.result) identityKey = getReq.result;
+                    else {
+                        identityKey = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+                        store.put(identityKey, "idKey");
+                    }
+                    const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
+                    const hex = bufToHex(pub).toUpperCase();
+                    document.getElementById('id-badge').innerText = `ID: ${hex.slice(0,8)}`;
                 };
-            } catch (e) { log("HTTPS_REQUIRED", "text-red-500"); }
-        }
-
-        async function ratchet(inputKey, label) {
-            const info = new TextEncoder().encode(`ghost-prod-${label}`);
-            const master = await crypto.subtle.importKey("raw", inputKey, "HKDF", false, ["deriveKey"]);
-            const derived = await crypto.subtle.deriveKey(
-                { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info },
-                master, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
-            );
-            return await crypto.subtle.exportKey("raw", derived);
+            };
         }
 
         async function startOffer() {
-            const btnText = document.getElementById('btn-text');
-            const loader = document.getElementById('loader');
-            
-            loader.classList.remove('hidden');
-            btnText.style.opacity = '0';
-            log("AUTO_GATHERING_ROUTES...", "text-cyan-400");
-
+            log("GATHERING ROUTES...", "text-cyan-400");
             pc = new RTCPeerConnection({ iceServers });
-            dataChannel = pc.createDataChannel("chat", { ordered: true });
+            dataChannel = pc.createDataChannel("chat");
             setupDC(dataChannel);
-            
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            
-            // AUTO-FLEX: Timeout acts as a safety limit (3s)
-            const gatheringTimeout = setTimeout(() => finishOffer("TIMED_OUT"), 3000);
-
-            pc.onicecandidate = e => {
-                // If it finishes naturally before 3s, it triggers instantly
+            pc.onicecandidate = async e => {
                 if (!e.candidate) {
-                    clearTimeout(gatheringTimeout);
-                    finishOffer("AUTO_COMPLETE");
+                    const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
+                    const token = btoa(JSON.stringify({ sdp: pc.localDescription, key: bufToHex(pub) }));
+                    document.getElementById('sdp-io').value = token;
+                    document.getElementById('copy-btn').classList.remove('hidden');
+                    genQR(token);
+                    log("OFFER READY", "text-emerald-500");
                 }
             };
+        }
 
-            async function finishOffer(reason) {
-                // Prevent double execution
-                if (document.getElementById('sdp-io').value && reason === "TIMED_OUT") return;
-                
-                const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
-                const token = btoa(JSON.stringify({ sdp: pc.localDescription, key: bufToHex(pub) }));
-                
-                document.getElementById('sdp-io').value = token;
-                document.getElementById('copy-btn').classList.remove('hidden');
-                
-                loader.classList.add('hidden');
-                btnText.style.opacity = '1';
-                log(`OFFER_READY (${reason})`, "text-emerald-500");
-            }
+        function genQR(data) {
+            const container = document.getElementById('qr-display-container');
+            container.classList.remove('hidden');
+            const canvas = document.getElementById('qr-gen-canvas');
+            canvas.innerHTML = "";
+            new QRCode(canvas, { text: data, width: 220, height: 220, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.L });
+        }
+
+        function startScanner() {
+            document.getElementById('scanner-container').classList.remove('hidden');
+            html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+                document.getElementById('sdp-io').value = text;
+                stopScanner();
+                connect();
+            }).catch(() => log("CAMERA_DENIED", "text-red-500"));
+        }
+
+        function stopScanner() {
+            if (html5QrCode) html5QrCode.stop().then(() => document.getElementById('scanner-container').classList.add('hidden'));
         }
 
         async function connect() {
@@ -233,19 +201,15 @@
                     pc = new RTCPeerConnection({ iceServers });
                     pc.ondatachannel = e => setupDC(e.channel);
                 }
-                
                 const remotePub = await crypto.subtle.importKey("raw", hexToBuf(data.key), { name: "ECDH", namedCurve: "P-256" }, true, []);
                 const shared = await crypto.subtle.deriveKey({ name: "ECDH", public: remotePub }, identityKey.privateKey, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
                 const root = await crypto.subtle.exportKey("raw", shared);
-                
                 const isInitiator = data.sdp.type === "answer";
                 sendChainKey = await ratchet(root, isInitiator ? "A" : "B");
                 recvChainKey = await ratchet(root, isInitiator ? "B" : "A");
-
                 const hash = await crypto.subtle.digest("SHA-256", root);
                 const sn = bufToHex(hash).toUpperCase();
                 document.getElementById('safety-number').innerText = `SN: ${sn.slice(0,4)} ${sn.slice(4,8)}`;
-
                 await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 if (data.sdp.type === "offer") {
                     const answer = await pc.createAnswer();
@@ -253,12 +217,24 @@
                     pc.onicecandidate = async e => {
                         if (!e.candidate) {
                             const pub = await crypto.subtle.exportKey("raw", identityKey.publicKey);
-                            document.getElementById('sdp-io').value = btoa(JSON.stringify({ sdp: pc.localDescription, key: bufToHex(pub) }));
-                            log("ANSWER_READY", "text-emerald-500");
+                            const token = btoa(JSON.stringify({ sdp: pc.localDescription, key: bufToHex(pub) }));
+                            document.getElementById('sdp-io').value = token;
+                            genQR(token);
+                            log("ANSWER_READY (SCAN BACK)", "text-emerald-500");
                         }
                     };
                 }
             } catch(e) { log("PARSING_ERROR", "text-red-400"); }
+        }
+
+        async function ratchet(inputKey, label) {
+            const info = new TextEncoder().encode(`ghost-v69-${label}`);
+            const master = await crypto.subtle.importKey("raw", inputKey, "HKDF", false, ["deriveKey"]);
+            const derived = await crypto.subtle.deriveKey(
+                { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info },
+                master, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+            );
+            return await crypto.subtle.exportKey("raw", derived);
         }
 
         function setupDC(dc) {
@@ -273,11 +249,9 @@
             dataChannel.onmessage = async e => {
                 const p = JSON.parse(e.data);
                 const key = await crypto.subtle.importKey("raw", recvChainKey, "AES-GCM", false, ["decrypt"]);
-                try {
-                    const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBuf(p.iv) }, key, hexToBuf(p.m));
-                    render(new TextDecoder().decode(dec), 'peer');
-                    recvChainKey = await ratchet(recvChainKey, "step");
-                } catch (err) { log("DECRYPTION_FAILED", "text-red-500"); }
+                const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hexToBuf(p.iv) }, key, hexToBuf(p.m));
+                render(new TextDecoder().decode(dec), 'peer');
+                recvChainKey = await ratchet(recvChainKey, "step");
             };
         }
 
@@ -291,13 +265,11 @@
         }
 
         function render(txt, side) {
-            const clean = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(txt) : txt;
+            const clean = DOMPurify.sanitize(txt);
             const d = document.createElement('div');
             d.className = `flex ${side === 'me' ? 'justify-end' : 'justify-start'} mes-in`;
-            const bubbleClass = side === 'me' 
-                ? 'bg-cyan-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-cyan-900/20' 
-                : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-2xl rounded-tl-none';
-            d.innerHTML = `<div class="max-w-[85%] p-3 text-[11px] ${bubbleClass}">${clean}</div>`;
+            const bubble = side === 'me' ? 'bg-cyan-600 text-white rounded-tr-none shadow-lg shadow-cyan-900/20' : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-none';
+            d.innerHTML = `<div class="max-w-[85%] p-3 text-[11px] rounded-2xl ${bubble}">${clean}</div>`;
             const container = document.getElementById('messages');
             container.appendChild(d);
             container.scrollTop = container.scrollHeight;
@@ -307,38 +279,30 @@
             const i = document.getElementById('msg-input');
             if (!i.value || !dataChannel || dataChannel.readyState !== "open") return;
             const val = i.value; i.value = '';
-            
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const key = await crypto.subtle.importKey("raw", sendChainKey, "AES-GCM", false, ["encrypt"]);
             const enc = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(val));
-            
             dataChannel.send(JSON.stringify({ iv: bufToHex(iv), m: bufToHex(enc) }));
             render(val, 'me');
             sendChainKey = await ratchet(sendChainKey, "step");
         }
 
-        async function nuclearBurn() {
-            if (confirm("THIS WILL PERMANENTLY ERASE YOUR IDENTITY AND SESSION. PROCEED?")) {
+        function nuclearBurn() {
+            if (confirm("ERASE ALL SESSION DATA?")) {
                 document.getElementById('main-container').classList.add('burn-flash');
-                if (pc) pc.close();
                 indexedDB.deleteDatabase(DB_NAME);
-                localStorage.clear();
-                sessionStorage.clear();
                 setTimeout(() => location.reload(), 600);
             }
         }
 
-        document.getElementById('send-btn').onclick = transmit;
-        document.getElementById('msg-input').onkeydown = e => { if(e.key === 'Enter') transmit(); };
         document.getElementById('create-btn').onclick = startOffer;
         document.getElementById('connect-btn').onclick = connect;
+        document.getElementById('send-btn').onclick = transmit;
+        document.getElementById('msg-input').onkeydown = e => { if(e.key === 'Enter') transmit(); };
         document.getElementById('copy-btn').onclick = () => {
-            const area = document.getElementById('sdp-io');
-            area.select();
+            document.getElementById('sdp-io').select();
             document.execCommand('copy');
-            const btn = document.getElementById('copy-btn');
-            btn.innerText = "COPIED!";
-            setTimeout(() => btn.innerText = "COPY TOKEN", 2000);
+            log("TOKEN_COPIED", "text-cyan-400");
         };
 
         init();
